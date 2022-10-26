@@ -18,6 +18,7 @@ STRING(REGEX REPLACE "-" "_" PY_NAME ${PROJECT_NAME})
 SET(${PROJECT_NAME}_PYTHON_SOURCES
   controller.py
   Logger.py
+  controller_caracal.py
   initialization_simulation.py
   __init__.py
   __main__.py
