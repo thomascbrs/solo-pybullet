@@ -103,3 +103,44 @@ def getPosVelJoints(robotId, revoluteJointIndices):
                       np.array([[jointStates[i_joint][1] for i_joint in range(len(jointStates))]]).transpose()))
 
     return q, qdot
+
+
+# Order of the forces
+forceSensors = ["FL_FOOT", "FR_FOOT", "HL_FOOT", "HR_FOOT"]
+
+# Function to get contact forces from the simulator
+def getContactForces(robotId, revoluteJointIndices):
+    """ Compute contact forces.
+    """
+    contact_list = p.getContactPoints(robotId)
+    f = {name: [0, pin.Force.Zero(), 1] for name in forceSensors}
+    s = {name: [np.zeros(3), 0.] for name in forceSensors}
+    contact_list = p.getContactPoints()
+    for contact in contact_list:
+        force_n = contact[9]
+        if force_n > 0.:
+            force_1 = contact[10]
+            force_2 = contact[12]
+            surface_n = -1 * np.array(contact[7])
+            surface_1 = -1 * np.array(contact[11])
+            surface_2 = -1 * np.array(contact[13])
+            force = force_n * surface_n + force_1 * surface_1 + force_2 * surface_2
+            friction_mu = p.getDynamicsInfo(planeId, -1)[1]
+            if contact[4] == -1:
+                try: # Get info might produce error when errors in pybullet
+                    name = p.getJointInfo(robotId, contact[3])[12].decode("utf-8")
+                    if name in forceSensors:
+                        f[name] = [0, pin.Force(-force, np.zeros(3)), 2 if np.linalg.norm(force) > 0. else 1 ]
+                        s[name] = [-surface_n, friction_mu]
+                except:
+                    pass
+            else:
+                try:
+                    name = p.getJointInfo(robotId, contact[4])[12].decode("utf-8")
+                    if name in forceSensors:
+                        f[name] = [0, pin.Force(force, np.zeros(3)), 2 if np.linalg.norm(force) > 0. else 1  ]
+                        s[name] = [surface_n, friction_mu]
+                except:
+                    pass
+
+    return f,s
