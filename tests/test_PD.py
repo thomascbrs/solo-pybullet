@@ -2,7 +2,7 @@
 
 import unittest
 import numpy as np
-from PD import PD
+from solo_pybullet.PD import PD
 
 class TestPD(unittest.TestCase):
 	def test_PD(self):
