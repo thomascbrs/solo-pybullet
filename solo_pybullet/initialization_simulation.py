@@ -2,7 +2,8 @@
 
 import numpy as np  # Numpy library
 import pybullet_data
-from example_robot_data import loadSolo  # Functions to load the SOLO quadruped
+import example_robot_data # Functions to load the SOLO quadruped
+import pinocchio as pin
 
 import pybullet as p  # PyBullet simulator
 
@@ -10,8 +11,8 @@ import pybullet as p  # PyBullet simulator
 def configure_simulation(dt, enableGUI):
     global jointTorques
     # Load the robot for Pinocchio
-    solo = loadSolo(True)
-    solo.initDisplay(loadModel=True)
+    solo = example_robot_data.load("solo12", False)
+    # solo.initDisplay(loadModel=True)
 
     # Start the client for PyBullet
     if enableGUI:
