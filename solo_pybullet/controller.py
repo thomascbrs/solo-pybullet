@@ -137,19 +137,19 @@ def c_walking_IK(q, qdot, dt, solo, t_simu):
 
     # Getting the different Jacobians
     fJ_FL3 = pin.frameJacobian(solo.model, solo.data, q_ref, ID_FL)[:3, -8:]  # Take only the translation terms
-    oJ_FL3 = oR_FL * fJ_FL3  # Transformation from local frame to world frame
+    oJ_FL3 = oR_FL @ fJ_FL3  # Transformation from local frame to world frame
     oJ_FLxz = oJ_FL3[0::2, -8:]  # Take the x and z components
 
     fJ_FR3 = pin.frameJacobian(solo.model, solo.data, q_ref, ID_FR)[:3, -8:]
-    oJ_FR3 = oR_FR * fJ_FR3
+    oJ_FR3 = oR_FR @ fJ_FR3
     oJ_FRxz = oJ_FR3[0::2, -8:]
 
     fJ_HL3 = pin.frameJacobian(solo.model, solo.data, q_ref, ID_HL)[:3, -8:]
-    oJ_HL3 = oR_HL * fJ_HL3
+    oJ_HL3 = oR_HL @ fJ_HL3
     oJ_HLxz = oJ_HL3[0::2, -8:]
 
     fJ_HR3 = pin.frameJacobian(solo.model, solo.data, q_ref, ID_HR)[:3, -8:]
-    oJ_HR3 = oR_HR * fJ_HR3
+    oJ_HR3 = oR_HR @ fJ_HR3
     oJ_HRxz = oJ_HR3[0::2, -8:]
 
     # Displacement error
@@ -159,7 +159,7 @@ def c_walking_IK(q, qdot, dt, solo, t_simu):
     J = np.vstack([oJ_FLxz, oJ_FRxz, oJ_HLxz, oJ_HRxz])
 
     # Computing the velocity
-    qa_dot_ref = -K * pinv(J) * nu
+    qa_dot_ref = -K * pinv(J) @ nu
     q_dot_ref = np.concatenate((np.zeros([6, 1]), qa_dot_ref))
 
     # Computing the updated configuration
@@ -276,19 +276,19 @@ def c_walking_ID(q, qdot, dt, solo, t_simu):
 
     # Getting the different Jacobians
     fJ_FL3 = pin.frameJacobian(solo.model, solo.data, q_ref, ID_FL)[:3, -8:]  #Take only the translation terms
-    oJ_FL3 = oR_FL * fJ_FL3  #Transformation from local frame to world frame
+    oJ_FL3 = oR_FL @ fJ_FL3  #Transformation from local frame to world frame
     oJ_FLxz = oJ_FL3[0::2, -8:]  #Take the x and z components
 
     fJ_FR3 = pin.frameJacobian(solo.model, solo.data, q_ref, ID_FR)[:3, -8:]
-    oJ_FR3 = oR_FR * fJ_FR3
+    oJ_FR3 = oR_FR @ fJ_FR3
     oJ_FRxz = oJ_FR3[0::2, -8:]
 
     fJ_HL3 = pin.frameJacobian(solo.model, solo.data, q_ref, ID_HL)[:3, -8:]
-    oJ_HL3 = oR_HL * fJ_HL3
+    oJ_HL3 = oR_HL @ fJ_HL3
     oJ_HLxz = oJ_HL3[0::2, -8:]
 
     fJ_HR3 = pin.frameJacobian(solo.model, solo.data, q_ref, ID_HR)[:3, -8:]
-    oJ_HR3 = oR_HR * fJ_HR3
+    oJ_HR3 = oR_HR @ fJ_HR3
     oJ_HRxz = oJ_HR3[0::2, -8:]
 
     # Computing the mass matrix M and the dynamic drift b
@@ -298,14 +298,14 @@ def c_walking_ID(q, qdot, dt, solo, t_simu):
     # Calculating reference torques
     Kp_tau = 8.
     Kd_tau = 0.2
-    torques_ref = -Kp_tau * (q_ref[7:] - q[7:]) - Kd_tau * qa_dot_ref
+    torques_ref = - Kp_tau * (q_ref[7:] - q[7:]) - Kd_tau * qa_dot_ref.reshape((8,))
 
     # Calculating joint accelerations
-    qa_dot2_ref = inv(M[6:, 6:]) * (torques_ref - b[6:])
-    q_dot2_ref = np.concatenate((np.zeros([6, 1]), qa_dot2_ref))
+    qa_dot2_ref = inv(M[6:, 6:]) @ (torques_ref - b[6:])
+    q_dot2_ref = np.concatenate((np.zeros([6, 1]), qa_dot2_ref.reshape((8,1))))
 
     # Computing the velocity
-    qa_dot_ref += qa_dot2_ref * dt
+    qa_dot_ref += qa_dot2_ref.reshape((8,1)) * dt
     q_dot_ref = np.concatenate((np.zeros([6, 1]), qa_dot_ref))
 
     # Computing the updated configuration
@@ -321,11 +321,11 @@ def c_walking_ID(q, qdot, dt, solo, t_simu):
     # Parameters for the PD controller
     Kp = 8.
     Kd = 0.2
-    torque_sat = 3  # torque saturation in N.m
+    torque_sat = 20  # torque saturation in N.m
     torques_ref = np.zeros((8, 1))  # feedforward torques
 
     # Call the PD controller
-    torques = PD(qa_ref, qa_dot_ref, qa, qa_dot, dt, Kp, Kd, torque_sat, torques_ref)
+    torques = PD(qa_ref, qa_dot_ref.reshape((8,)), qa, qa_dot.reshape((8,)), dt, Kp, Kd, torque_sat, torques_ref.reshape((8,)))
 
     # torques must be a numpy array of shape (8, 1) containing the torques applied to the 8 motors
-    return torques
+    return torques.reshape((8,1))
