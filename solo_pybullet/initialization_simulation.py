@@ -17,6 +17,8 @@ def configure_simulation(dt, enableGUI):
     # Start the client for PyBullet
     if enableGUI:
         physicsClient = p.connect(p.GUI)
+        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+        p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)
     else:
         physicsClient = p.connect(p.DIRECT)  # noqa
     # p.GUI for graphical version
@@ -27,21 +29,46 @@ def configure_simulation(dt, enableGUI):
 
     # Load horizontal plane for PyBullet
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
-    p.loadURDF("plane.urdf")
+    global planeId
+    planeId = p.loadURDF("plane.urdf")
+    print("PLANE DYNAMICS")
+    p.changeDynamics(planeId, -1, lateralFriction=1.)
+    # p.changeDynamics(planeId, -1, lateralFriction=0.9, restitution = -1, contactDamping = 100., contactStiffness= 50.)
+    elements_ = [
+        "mass", "lateral_friction", "local_inertia_diag", "local inertial pos", "local inertial orn", "restitution",
+        "rolling friction", "spinning friction", "contact damping", "contact stiffness", "body type",
+        "collision margin"
+    ]
+
+    for k,elt in enumerate(p.getDynamicsInfo(planeId, -1)):
+        elem = elements_[k] + " : "
+        print(elem , elt)
 
     # Load the robot for PyBullet
     robotStartPos = [0, 0, 0.35]
     robotStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
-    p.setAdditionalSearchPath("/opt/openrobots/share/example-robot-data/solo_description/robots")
-    robotId = p.loadURDF("solo.urdf", robotStartPos, robotStartOrientation)
+    p.setAdditionalSearchPath("/opt/openrobots/share/example-robot-data/robots/solo_description/urdf")
+    robotId = p.loadURDF("solo12.urdf", robotStartPos, robotStartOrientation)
+
+    JointFootId = [3,7,11,15]
+    for id_ in JointFootId:
+        pass
+        # p.changeDynamics(robotId, id_, lateralFriction=0.9, restitution = -1, contactDamping = 100., contactStiffness= 50.)
+    # ["FL_FOOT", "FR_FOOT", "HL_FOOT", "HR_FOOT"]
+    toprint = "\n\nSOLO JOINT " + str(JointFootId[0]) + " DYNAMICS"
+    print(toprint)
+    for k,elt in enumerate(p.getDynamicsInfo(robotId, JointFootId[0])):
+        elem = elements_[k] + " : "
+        print(elem , elt)
 
     # Set time step of the simulation
-    # dt = 0.001
+    dt = 0.001
     p.setTimeStep(dt)
     # realTimeSimulation = True # If True then we will sleep in the main loop to have a frequency of 1/dt
 
     # Disable default motor control for revolute joints
-    revoluteJointIndices = [0, 1, 3, 4, 6, 7, 9, 10]
+    # revoluteJointIndices = [0, 1, 3, 4, 6, 7, 9, 10]
+    revoluteJointIndices =  [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14]
     p.setJointMotorControlArray(robotId,
                                 jointIndices=revoluteJointIndices,
                                 controlMode=p.VELOCITY_CONTROL,
@@ -54,6 +81,10 @@ def configure_simulation(dt, enableGUI):
 
     # Compute one step of simulation for initialization
     p.stepSimulation()
+
+    # Pause simulation for camera recording
+    # from IPython import embed
+    # embed()
 
     return robotId, solo, revoluteJointIndices
 
